@@ -794,30 +794,36 @@ def read_command(argv):
 
 
 def load_agent(pacman, nographics):
-    # Looks through all python_path Directories for the right module,
+    import os
     python_path_str = os.path.expandvars("$PYTHONPATH")
     if python_path_str.find(";") == -1:
         python_path_dirs = python_path_str.split(":")
     else:
         python_path_dirs = python_path_str.split(";")
-    python_path_dirs.append(".")
+    # Make sure current directory is added and at the front for priority
+    if "." not in python_path_dirs:
+        python_path_dirs.insert(0, ".")
 
     for module_dir in python_path_dirs:
         if not os.path.isdir(module_dir):
             continue
         module_names = [f for f in os.listdir(module_dir) if f.endswith("gents.py")]
+        print("Searching for agents in:", module_dir, "Found:", module_names)  # diagnostic print
         for modulename in module_names:
             try:
+                print("Trying to import module:", modulename[:-3])
                 module = __import__(modulename[:-3])
-            except ImportError:
+                print("Imported module attributes:", dir(module))
+            except ImportError as e:
+                print(f"ImportError for module {modulename[:-3]}: {e}")
                 continue
             if pacman in dir(module):
                 if nographics and modulename == "keyboard_agents.py":
-                    raise Exception(
-                        "Using the keyboard requires graphics (not text display)"
-                    )
+                    raise Exception("Using the keyboard requires graphics (not text display)")
+                print(f"Found agent {pacman} in {modulename}")
                 return getattr(module, pacman)
     raise Exception("The agent '" + pacman + "' is not specified in any *Agents.py.")
+
 
 
 def replay_game(layout, actions, display):
